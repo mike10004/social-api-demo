@@ -22,7 +22,7 @@ public class Tests {
         }
     }
 
-    public static class OauthClientConfig extends OauthClient {
+    public static class OauthClientConfig extends OauthConfig {
 
         @Nullable
         public Integer redirectUriPort;

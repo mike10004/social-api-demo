@@ -20,13 +20,20 @@ import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.BiFunction;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class Program {
 
+    private final BiFunction<Sns, OauthConfig, Object> clientFactory;
+
+    public Program(BiFunction<Sns, OauthConfig, Object> clientFactory) {
+        this.clientFactory = clientFactory;
+    }
+
     public static void main(String[] args) throws Exception {
-        int exitcode = new Program().main0(args);
+        int exitcode = new Program(Sns::buildClient).main0(args);
         System.exit(exitcode);
     }
 
@@ -109,7 +116,7 @@ public class Program {
         }
         switch (mode) {
             case check:
-                // do nothing more; check is performed in each mode
+                // do nothing more; check already performed
                 break;
             case authorize:
                 Authmaster<?> authmaster = factory.getAuthmaster();
@@ -127,12 +134,17 @@ public class Program {
                 demo.demonstrate();
                 break;
             case crawl:
-                factory.getCrawler();
+                Crawler<?> crawler = factory.getCrawler();
+                crawler.crawl(createCrawlerConfig(options));
                 break;
             default:
                 throw new IllegalStateException("mode: " + mode);
         }
         return 0;
+    }
+
+    protected CrawlerConfig createCrawlerConfig(OptionSet options) {
+        return new CrawlerConfig();
     }
 
     protected void configureSystemProxy(Proxy.Type proxyType, @Nullable HostAndPort proxyAddress, Properties systemProperties) {
@@ -177,7 +189,7 @@ public class Program {
          * Builds client.
          */
         @SuppressWarnings("unchecked")
-        public <T> T buildClient(OauthClient client) {
+        public <T> T buildClient(OauthConfig client) {
             @Nullable AccessBadge badge = null;
             if (client instanceof OauthCredentials) {
                 badge = ((OauthCredentials)client).badge;
@@ -192,18 +204,17 @@ public class Program {
             }
         }
 
-
     }
 
     public enum Mode {
         check, authorize, demo, crawl
     }
 
-    static class ProgramConfigBase<T extends OauthClient> {
+    static class ProgramConfigBase<T extends OauthConfig> {
         public Map<Sns, T> oauthClients;
     }
 
-    protected static class OauthCredentials extends OauthClient {
+    protected static class OauthCredentials extends OauthConfig {
 
         public AccessBadge badge;
 
@@ -222,10 +233,10 @@ public class Program {
     }
 
     private PerformerFactory getPerformerFactory(Sns sns, ProgramConfig config) throws IOException {
-        OauthClient oauthClient = checkNotNull(checkNotNull(config.oauthClients, "configuration error; oauthClients not present").get(sns), "no config for %s", sns);
+        OauthConfig oauthConfig = checkNotNull(checkNotNull(config.oauthClients, "configuration error; oauthClients not present").get(sns), "no config for %s", sns);
         switch (sns) {
             case twitter:
-                Twitter twitterClient = Program.Sns.twitter.buildClient(oauthClient);
+                Twitter twitterClient = (Twitter) clientFactory.apply(Sns.twitter, oauthConfig);
                 return new PerformerFactory() {
                     @Override
                     public HttpGetter getChecker() {
@@ -238,12 +249,17 @@ public class Program {
                     }
 
                     @Override
+                    public Crawler<?> getCrawler() {
+                        return new TwitterCrawler(twitterClient);
+                    }
+
+                    @Override
                     public Demonstrator<?> getDemonstrator() {
                         return new TwitterDemo(twitterClient);
                     }
                 };
             case facebook:
-                Facebook facebookClient = Program.Sns.facebook.buildClient(oauthClient);
+                Facebook facebookClient = (Facebook) clientFactory.apply(Sns.facebook, oauthConfig);
                 return new PerformerFactory() {
                     @Override
                     public HttpGetter getChecker() {
@@ -253,6 +269,11 @@ public class Program {
                     @Override
                     public Authmaster<?> getAuthmaster() {
                         return new FacebookAuthmaster(facebookClient);
+                    }
+
+                    @Override
+                    public Crawler<?> getCrawler() {
+                        return new FacebookCrawler(facebookClient);
                     }
 
                     @Override
@@ -270,9 +291,7 @@ public class Program {
         HttpGetter getChecker();
         Authmaster<?> getAuthmaster();
         Demonstrator<?> getDemonstrator();
-        default Object getCrawler() {
-            throw new UnsupportedOperationException();
-        }
+        Crawler<?> getCrawler();
     }
 
     private enum HttpCheckResult {

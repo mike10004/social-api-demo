@@ -8,7 +8,7 @@ import java.net.URL;
 public class SnsClientBuilderTest {
     @Test
     public void facebook() throws Exception {
-        OauthClient client = new OauthClient("abc", "def");
+        OauthConfig client = new OauthConfig("abc", "def");
         String accessToken = "ghi";
         Facebook fb = SnsClientBuilder.facebook().buildClient(client, new AccessBadge(accessToken, null, null));
         String url = fb.getOAuthAuthorizationURL("http://localhost:12345/");

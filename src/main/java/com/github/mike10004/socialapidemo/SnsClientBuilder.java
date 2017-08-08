@@ -14,7 +14,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public interface SnsClientBuilder<T> {
 
-    T buildClient(OauthClient client, @Nullable AccessBadge badge);
+    T buildClient(OauthConfig client, @Nullable AccessBadge badge);
 
     static SnsClientBuilder<Facebook> facebook() {
         String ALL_PERMISSIONS =
@@ -46,19 +46,19 @@ public interface SnsClientBuilder<T> {
                         + "user_work_history";
         return new SnsClientBuilder<Facebook>() {
             @Override
-            public Facebook buildClient(OauthClient client, @Nullable AccessBadge badge) {
+            public Facebook buildClient(OauthConfig client, @Nullable AccessBadge badge) {
                 @Nullable String accessToken = badge == null ? null : checkNotNull(badge.accessToken, "badge not null but access token is null");
                 return buildFacebookClient(client, accessToken);
             }
 
-            private Facebook buildFacebookClient(OauthClient oauthClient, String accessToken) {
-                checkNotNull(oauthClient, "oauth client id/secret");
-                if (oauthClient.clientId == null || oauthClient.clientSecret == null) {
+            private Facebook buildFacebookClient(OauthConfig oauthConfig, String accessToken) {
+                checkNotNull(oauthConfig, "oauth client id/secret");
+                if (oauthConfig.clientId == null || oauthConfig.clientSecret == null) {
                     LoggerFactory.getLogger(getClass()).warn("client id/secret not set");
                 }
                 ConfigurationBuilder cb = new ConfigurationBuilder();
-                cb.setOAuthAppId(oauthClient.clientId)
-                        .setOAuthAppSecret(oauthClient.clientSecret)
+                cb.setOAuthAppId(oauthConfig.clientId)
+                        .setOAuthAppSecret(oauthConfig.clientSecret)
                         .setOAuthPermissions(ALL_PERMISSIONS);
                 Configuration conf = cb.build();
                 FacebookFactory factory = new FacebookFactory(conf);
@@ -73,7 +73,7 @@ public interface SnsClientBuilder<T> {
     static SnsClientBuilder<Twitter> twitter() {
         return new SnsClientBuilder<Twitter>() {
             @Override
-            public Twitter buildClient(OauthClient client, @Nullable AccessBadge badge) {
+            public Twitter buildClient(OauthConfig client, @Nullable AccessBadge badge) {
                 twitter4j.auth.AccessToken officialToken = null;
                 if (badge != null) {
                     officialToken = new twitter4j.auth.AccessToken(badge.accessToken, checkNotNull(badge.accessSecret, "access token secret"));
@@ -81,13 +81,13 @@ public interface SnsClientBuilder<T> {
                 return buildTwitterClient(client, officialToken);
             }
 
-            private Twitter buildTwitterClient(OauthClient oauthClient, @Nullable twitter4j.auth.AccessToken accessToken) {
-                if (oauthClient.clientId == null || oauthClient.clientSecret == null) {
+            private Twitter buildTwitterClient(OauthConfig oauthConfig, @Nullable twitter4j.auth.AccessToken accessToken) {
+                if (oauthConfig.clientId == null || oauthConfig.clientSecret == null) {
                     LoggerFactory.getLogger(getClass()).warn("client id/secret not set");
                 }
                 TwitterFactory tf = new TwitterFactory(new twitter4j.conf.ConfigurationBuilder()
-                        .setOAuthConsumerKey(oauthClient.clientId)
-                        .setOAuthConsumerSecret(oauthClient.clientSecret)
+                        .setOAuthConsumerKey(oauthConfig.clientId)
+                        .setOAuthConsumerSecret(oauthConfig.clientSecret)
                         .build());
                 return accessToken == null
                         ? tf.getInstance()

@@ -8,8 +8,8 @@ public class FacebookHttpGetterTest extends HttpGetterTestBase {
 
     @Override
     protected HttpGetter buildGetter() throws IOException {
-        OauthClient oauthClient = Tests.loadExampleOauthCreds(Program.Sns.facebook);
-        Facebook facebookClient = Program.Sns.facebook.buildClient(oauthClient);
+        OauthConfig oauthConfig = Tests.loadExampleOauthCreds(Program.Sns.facebook);
+        Facebook facebookClient = Program.Sns.facebook.buildClient(oauthConfig);
         return new FacebookHttpGetter(facebookClient);
     }
 }

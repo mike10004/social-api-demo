@@ -23,8 +23,8 @@ public class AuthmasterExamples {
 
     public static class T {
         public static void main(String[] args) throws Exception {
-            OauthClient oauthClient = Tests.loadExampleOauthCreds(Program.Sns.twitter);
-            Twitter twitterClient = Program.Sns.twitter.buildClient(oauthClient);
+            OauthConfig oauthConfig = Tests.loadExampleOauthCreds(Program.Sns.twitter);
+            Twitter twitterClient = Program.Sns.twitter.buildClient(oauthConfig);
             TwitterAuthmaster authmaster = new TwitterAuthmaster(twitterClient);
             int port = Tests.provideUsablePort();
             AccessBadge badge = authmaster.authorize(port);
