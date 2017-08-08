@@ -32,8 +32,12 @@ public class Program {
         this.clientFactory = clientFactory;
     }
 
+    public Program() {
+        this(Sns::buildClient);
+    }
+
     public static void main(String[] args) throws Exception {
-        int exitcode = new Program(Sns::buildClient).main0(args);
+        int exitcode = new Program().main0(args);
         System.exit(exitcode);
     }
 

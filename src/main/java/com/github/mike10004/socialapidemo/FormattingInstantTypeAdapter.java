@@ -1,12 +1,12 @@
 package com.github.mike10004.socialapidemo;
 
 import com.google.common.collect.ImmutableList;
-import com.google.gson.JsonParseException;
-import com.google.gson.TypeAdapter;
+import com.google.gson.*;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
@@ -18,6 +18,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 public class FormattingInstantTypeAdapter extends TypeAdapter<Instant> {
+
+    private static final JsonParser SHARED_JSON_PARSER = new JsonParser(); // can be shared because it's stateless
 
     private final DateTimeFormatter outputDateTimeFormatter;
     private final DateTimeFormatter firstParser;
@@ -71,14 +73,29 @@ public class FormattingInstantTypeAdapter extends TypeAdapter<Instant> {
             in.nextNull();
             return null;
         }
+        if (token == JsonToken.BEGIN_OBJECT) { // assume default form with 'seconds' and 'nanos' fields
+            JsonObject element = SHARED_JSON_PARSER.parse(in).getAsJsonObject();
+            long seconds = getAsPrimitiveLong(element.getAsJsonPrimitive("seconds"), 0L);
+            long nanos = getAsPrimitiveLong(element.getAsJsonPrimitive("nanos"), 0L);
+            return Instant.ofEpochSecond(seconds, nanos);
+        }
         String instantStr = in.nextString();
         return parse(instantStr);
+    }
+
+    @SuppressWarnings("SameParameterValue")
+    private static long getAsPrimitiveLong(@Nullable JsonPrimitive primitive, long defaultValue) {
+        if (primitive != null) {
+            return primitive.getAsLong();
+        }
+        return defaultValue;
     }
 
     private long getNumFormats() {
         return 1L + otherParsers.size();
     }
 
+    @SuppressWarnings("unused")
     public static class JsonDateTimeParseException extends JsonParseException {
 
         public JsonDateTimeParseException(String msg) {

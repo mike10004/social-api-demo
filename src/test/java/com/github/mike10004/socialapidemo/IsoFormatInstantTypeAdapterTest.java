@@ -1,9 +1,6 @@
 package com.github.mike10004.socialapidemo;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
+import com.google.gson.*;
 import org.junit.Test;
 
 import java.time.Instant;
@@ -55,7 +52,22 @@ public class IsoFormatInstantTypeAdapterTest {
         JsonElement holderJson = gson().toJsonTree(expected);
         Holder actual = gson().fromJson(holderJson, Holder.class);
         assertEquals("holder", expected, actual);
+    }
 
+    @Test
+    public void readDefaultSerializedForm() throws Exception {
+        Instant expected = Instant.ofEpochSecond(1506438292L, 933000000L);
+        String defaultFormJson = new Gson().toJson(expected);
+        Instant actual = gson().fromJson(defaultFormJson, Instant.class);
+        assertEquals("from default form", expected, actual);
+    }
+
+    @Test
+    public void readDefaultSerializedFormInHolder() throws Exception {
+        Instant expected = Instant.ofEpochSecond(1506438292L, 933000000L);
+        String defaultFormJson = new Gson().toJson(new Holder(expected));
+        Holder actual = gson().fromJson(defaultFormJson, Holder.class);
+        assertEquals("from default form in holder", expected, actual.instant);
     }
 
     private static class Holder {
