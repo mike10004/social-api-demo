@@ -1,52 +1,50 @@
 package com.github.mike10004.socialapidemo;
 
-public class CrawlerConfig {
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 
-    /**
-     * Asset processor specification URI. Individual asset processor
-     * implementations are selected and configured based on the URI.
-     */
-    public final String processorSpecUri;
+/**
+ * Abstract class for crawler dependency service factory. Concrete implementations
+ * of this class instantiate services used by a crawler.
+ */
+public abstract class CrawlerConfig {
 
-    /**
-     * Strategy to use for throttling API activity.
-     */
-    public final ThrottleStrategy throttleStrategy;
+    private final LoadingCache<String, Object> serviceCache;
 
-    private CrawlerConfig(Builder builder) {
-        processorSpecUri = builder.processorSpecUri;
-        throttleStrategy = builder.throttleStrategy;
+    protected CrawlerConfig() {
+        serviceCache = CacheBuilder.newBuilder().build(new CacheLoader<String, Object>(){
+            @Override
+            public Object load(String key) throws Exception {
+                switch (key) {
+                    case "throttler": return buildThrottler();
+                    case "assetProcessor": return buildAssetProcessor();
+                    case "errorReactor": return buildErrorReactor();
+                    default:
+                        throw new IllegalArgumentException("unknown service: " + key);
+                }
+            }
+        });
     }
 
-    public static Builder builder() {
-        return new Builder();
+    public Throttler getThrottler() {
+        return (Throttler) serviceCache.getUnchecked("throttler");
     }
 
-    @SuppressWarnings("unused")
-    public enum ThrottleStrategy {
-        NONE, SNS_API_DEFAULT
+    public AssetProcessor getAssetProcessor() {
+        return (AssetProcessor) serviceCache.getUnchecked("assetProcessor");
     }
 
-
-    public static final class Builder {
-        private String processorSpecUri;
-        private ThrottleStrategy throttleStrategy;
-
-        private Builder() {
-        }
-
-        public Builder processorSpecUri(String processorSpecUri) {
-            this.processorSpecUri = processorSpecUri;
-            return this;
-        }
-
-        public Builder throttleStrategy(ThrottleStrategy throttleStrategy) {
-            this.throttleStrategy = throttleStrategy;
-            return this;
-        }
-
-        public CrawlerConfig build() {
-            return new CrawlerConfig(this);
-        }
+    public ErrorReactor getErrorReactor() {
+        return (ErrorReactor) serviceCache.getUnchecked("errorReactor");
     }
+
+    protected abstract Throttler buildThrottler();
+
+    protected abstract AssetProcessor buildAssetProcessor();
+
+    protected ErrorReactor buildErrorReactor() {
+        return ErrorReactor.rethrower();
+    }
+
 }

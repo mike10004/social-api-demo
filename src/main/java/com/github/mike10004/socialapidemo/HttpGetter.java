@@ -3,6 +3,9 @@ package com.github.mike10004.socialapidemo;
 import java.io.IOException;
 import java.net.URL;
 
+/**
+ * Interface for classes that perform an HTTP GET request.
+ */
 public interface HttpGetter {
 
     class SimpleResponse {

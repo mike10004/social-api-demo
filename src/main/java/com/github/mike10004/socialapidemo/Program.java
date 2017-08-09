@@ -65,8 +65,8 @@ public class Program {
         parser.accepts("print-config-template", "print a config file template and exit");
         parser.accepts("redirect-path", "set path of redirect URI (default is empty path '/')").withRequiredArg().ofType(String.class).describedAs("PATH");
         parser.accepts("print-config", "print config after parsing");
-        parser.accepts("throttle", "set throttle strategy").withRequiredArg().ofType(CrawlerConfig.ThrottleStrategy.class).describedAs("STRATEGY");
-        parser.accepts("processor", "set asset processor; file:// URI means store data in filesystem directory").withRequiredArg().ofType(String.class).describedAs("URI");
+        parser.accepts(OptionsConfig.OPT_THROTTLE, "set throttle strategy").withRequiredArg().ofType(OptionsConfig.ThrottleStrategy.class).describedAs("STRATEGY").defaultsTo(OptionsConfig.ThrottleStrategy.SNS_API_DEFAULT);
+        parser.accepts(OptionsConfig.OPT_PROCESSOR, "set asset processor; file:// URI means store data in filesystem directory").withRequiredArg().ofType(String.class).describedAs("URI");
         OptionSet options = parser.parse(args);
         if (options.has("print-config-template")) {
             ProgramConfig config = new ProgramConfig();
@@ -140,7 +140,7 @@ public class Program {
                 demo.demonstrate();
                 break;
             case crawl:
-                CrawlerConfig crawlerConfig = createCrawlerConfig(options);
+                CrawlerConfig crawlerConfig = createCrawlerConfig(sns, options);
                 Crawler<?, ?> crawler = factory.getCrawler(crawlerConfig);
                 crawler.crawl();
                 break;
@@ -150,11 +150,8 @@ public class Program {
         return 0;
     }
 
-    protected CrawlerConfig createCrawlerConfig(OptionSet options) {
-        return CrawlerConfig.builder()
-                .processorSpecUri((String) options.valueOf("processor"))
-                .throttleStrategy((CrawlerConfig.ThrottleStrategy) options.valueOf("throttle"))
-                .build();
+    protected CrawlerConfig createCrawlerConfig(Program.Sns sns, OptionSet options) {
+        return new OptionsConfig(sns, options);
     }
 
     protected void configureSystemProxy(Proxy.Type proxyType, @Nullable HostAndPort proxyAddress, Properties systemProperties) {

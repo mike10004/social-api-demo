@@ -2,15 +2,12 @@ package com.github.mike10004.socialapidemo;
 
 import com.google.common.base.CharMatcher;
 import com.google.common.io.ByteSource;
-import com.google.common.io.CharSource;
 import com.google.common.io.Files;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -56,23 +53,6 @@ public class FileStoringAssetProcessor implements AssetProcessor {
         } catch (IOException e) {
             log.warn("failed to store asset", e);
         }
-    }
-
-    public interface AssetSerializer {
-
-        @Nullable
-        ByteSource serialize(Object asset);
-
-        @Nullable
-        default ByteSource serialize(String data) {
-            return serialize(CharSource.wrap(data));
-        }
-
-        @Nullable
-        default ByteSource serialize(CharSource charSource) {
-            return charSource.asByteSource(StandardCharsets.UTF_8);
-        }
-
     }
 
     protected String createFilenamePrefix(Object asset) {

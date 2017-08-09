@@ -55,16 +55,13 @@ public class TwitterCrawlerTest {
         checkState(oauthConfig.badge.accessSecret != null, "oauth access badge secret absent");
         File storageRoot = temporaryFolder.getRoot();
         System.out.format("%s is storage root%n", storageRoot);
-        CrawlerConfig.ThrottleStrategy throttleStrategy = CrawlerConfig.ThrottleStrategy.SNS_API_DEFAULT;
-        CrawlerConfig crawlerConfig = CrawlerConfig.builder()
-                .processorSpecUri(storageRoot.toURI().toString())
-                .throttleStrategy(throttleStrategy)
-                .build();
+        CrawlerConfig crawlerConfig = new DirectConfig(new TwitterThrottler(), new FileStoringAssetProcessor(storageRoot.toPath(), new TwitterAssetSerializer()));
         TwitterCrawler crawler = new TwitterCrawler(client, crawlerConfig);
         crawler.crawl();
         System.out.format("httpdrule heard %d requests and matched %d%n", httpdRule.getNumRequestsHeard(), httpdRule.getNumRequestsMatched());
         checkState(httpdRule.getNumRequestsMatched() > 0, "no requests matched by httpdrule");
         Collection<File> assets = FileUtils.listFiles(storageRoot, null, true);
+        assets.forEach(System.out::println);
         assertFalse("expect something downloaded", assets.isEmpty());
         System.out.format("crawl complete, %d items downloaded%n", assets.size());
     }
