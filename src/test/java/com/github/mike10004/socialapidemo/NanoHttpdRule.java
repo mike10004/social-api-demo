@@ -6,8 +6,10 @@ import org.junit.rules.ExternalResource;
 
 import javax.annotation.Nullable;
 import java.net.ServerSocket;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static com.google.common.base.Preconditions.checkState;
 
@@ -15,8 +17,11 @@ public class NanoHttpdRule extends ExternalResource {
 
     private NanoHTTPD server;
 
-    private final List<RequestHandler> requestHandlers = new CopyOnWriteArrayList<>();
-    private RequestHandler defaultRequestHandler = RequestHandler.getDefault();
+    private final List<RequestHandler> requestHandlers = Collections.synchronizedList(new ArrayList<>());
+    private final RequestHandler defaultRequestHandler = RequestHandler.getDefault();
+    private final AtomicLong numRequestsMatched = new AtomicLong(0L);
+    private final AtomicLong numRequestsHeard = new AtomicLong(0L);
+
     public interface RequestHandler {
         @Nullable
         NanoHTTPD.Response serve(NanoHTTPD.IHTTPSession session);
@@ -43,9 +48,11 @@ public class NanoHttpdRule extends ExternalResource {
         server = new NanoHTTPD(port) {
             @Override
             public Response serve(IHTTPSession session) {
+                numRequestsHeard.incrementAndGet();
                 for (RequestHandler handler : requestHandlers) {
                     Response response = handler.serve(session);
                     if (response != null) {
+                        numRequestsMatched.incrementAndGet();
                         return response;
                     }
                 }
@@ -80,5 +87,13 @@ public class NanoHttpdRule extends ExternalResource {
 
     public URIBuilder buildUri() {
         return new URIBuilder("http://" + getSocketAddress() + "/");
+    }
+
+    public long getNumRequestsHeard() {
+        return numRequestsHeard.get();
+    }
+
+    public long getNumRequestsMatched() {
+        return numRequestsMatched.get();
     }
 }

@@ -199,16 +199,16 @@ public class Program {
          * Builds client.
          */
         @SuppressWarnings("unchecked")
-        public <T> T buildClient(OauthConfig client) {
+        public <T> T buildClient(OauthConfig oauthConfig) {
             @Nullable AccessBadge badge = null;
-            if (client instanceof OauthCredentials) {
-                badge = ((OauthCredentials)client).badge;
+            if (oauthConfig instanceof OauthCredentials) {
+                badge = ((OauthCredentials)oauthConfig).badge;
             }
             switch (this) {
                 case facebook:
-                    return (T) SnsClientBuilder.facebook().buildClient(client, badge);
+                    return (T) SnsClientBuilder.facebook().buildClient(oauthConfig, badge);
                 case twitter:
-                    return (T) SnsClientBuilder.twitter().buildClient(client, badge);
+                    return (T) SnsClientBuilder.twitter().buildClient(oauthConfig, badge);
                 default:
                     throw new IllegalStateException("not handled: " + this);
             }
@@ -222,16 +222,6 @@ public class Program {
 
     static class ProgramConfigBase<T extends OauthConfig> {
         public Map<Sns, T> oauthClients;
-    }
-
-    protected static class OauthCredentials extends OauthConfig {
-
-        public AccessBadge badge;
-
-        public OauthCredentials(String clientId, String clientSecret, AccessBadge badge) {
-            super(clientId, clientSecret);
-            this.badge = badge;
-        }
     }
 
     private static class ProgramConfig extends ProgramConfigBase<OauthCredentials> {

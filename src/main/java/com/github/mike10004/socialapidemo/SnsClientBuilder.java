@@ -3,7 +3,6 @@ package com.github.mike10004.socialapidemo;
 import facebook4j.Facebook;
 import facebook4j.FacebookFactory;
 import facebook4j.conf.Configuration;
-import facebook4j.conf.ConfigurationBuilder;
 import org.slf4j.LoggerFactory;
 import twitter4j.Twitter;
 import twitter4j.TwitterFactory;
@@ -16,7 +15,15 @@ public interface SnsClientBuilder<T> {
 
     T buildClient(OauthConfig client, @Nullable AccessBadge badge);
 
+    default T buildClient(OauthCredentials oauthCredentials) {
+        return buildClient(oauthCredentials, oauthCredentials.badge);
+    }
+
     static SnsClientBuilder<Facebook> facebook() {
+        return facebook(new facebook4j.conf.ConfigurationBuilder());
+    }
+
+    static SnsClientBuilder<Facebook> facebook(facebook4j.conf.ConfigurationBuilder cb) {
         String ALL_PERMISSIONS =
                 "public_profile,"
                         + "email,"
@@ -56,7 +63,6 @@ public interface SnsClientBuilder<T> {
                 if (oauthConfig.clientId == null || oauthConfig.clientSecret == null) {
                     LoggerFactory.getLogger(getClass()).warn("client id/secret not set");
                 }
-                ConfigurationBuilder cb = new ConfigurationBuilder();
                 cb.setOAuthAppId(oauthConfig.clientId)
                         .setOAuthAppSecret(oauthConfig.clientSecret)
                         .setOAuthPermissions(ALL_PERMISSIONS);
@@ -71,6 +77,10 @@ public interface SnsClientBuilder<T> {
     }
 
     static SnsClientBuilder<Twitter> twitter() {
+        return twitter(new twitter4j.conf.ConfigurationBuilder());
+    }
+
+    static SnsClientBuilder<Twitter> twitter(twitter4j.conf.ConfigurationBuilder cb) {
         return new SnsClientBuilder<Twitter>() {
             @Override
             public Twitter buildClient(OauthConfig client, @Nullable AccessBadge badge) {
@@ -85,7 +95,7 @@ public interface SnsClientBuilder<T> {
                 if (oauthConfig.clientId == null || oauthConfig.clientSecret == null) {
                     LoggerFactory.getLogger(getClass()).warn("client id/secret not set");
                 }
-                TwitterFactory tf = new TwitterFactory(new twitter4j.conf.ConfigurationBuilder()
+                TwitterFactory tf = new TwitterFactory(cb
                         .setOAuthConsumerKey(oauthConfig.clientId)
                         .setOAuthConsumerSecret(oauthConfig.clientSecret)
                         .build());

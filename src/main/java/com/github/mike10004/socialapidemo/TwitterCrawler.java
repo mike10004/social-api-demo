@@ -1,5 +1,6 @@
 package com.github.mike10004.socialapidemo;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.io.ByteSource;
 import com.google.common.util.concurrent.RateLimiter;
 import org.slf4j.Logger;
@@ -21,7 +22,12 @@ public class TwitterCrawler extends Crawler<Twitter, TwitterException> {
     private static final int TWITTER_WINDOW_MINUTES = 15;
 
     public TwitterCrawler(Twitter client, CrawlerConfig crawlerConfig) {
-        super(client, crawlerConfig, buildThrottler(crawlerConfig), buildAssetProcessor(crawlerConfig));
+        this(client, crawlerConfig, buildThrottler(crawlerConfig), buildAssetProcessor(crawlerConfig));
+    }
+
+    @VisibleForTesting
+    TwitterCrawler(Twitter client, CrawlerConfig crawlerConfig, Throttler throttler, AssetProcessor assetProcessor) {
+        super(client, crawlerConfig, throttler, assetProcessor);
     }
 
     @Override
@@ -90,7 +96,11 @@ public class TwitterCrawler extends Crawler<Twitter, TwitterException> {
         public static final String users_suggestions__slug_members = "users/suggestions/:slug/members";
     }
 
-    private static Throttler buildTwitterThrottler() {
+    /**
+     * Builds a twitter throttler that throttles calls based on the published rate limits.
+     * @return a rate-limiting throttler
+     */
+    protected static Throttler buildDefaultTwitterThrottler() {
         // https://dev.twitter.com/rest/public/rate-limits
         // default: 15 requests per 15 minute window
         //        = 15 requests per 15*60 seconds
@@ -170,7 +180,7 @@ public class TwitterCrawler extends Crawler<Twitter, TwitterException> {
                     return Throttler.inactive();
             }
         }
-        return buildTwitterThrottler();
+        return buildDefaultTwitterThrottler();
     }
 
     protected static AssetProcessor buildAssetProcessor(CrawlerConfig crawlerConfig) {

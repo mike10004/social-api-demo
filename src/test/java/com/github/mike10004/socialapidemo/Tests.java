@@ -1,14 +1,19 @@
 package com.github.mike10004.socialapidemo;
 
+import com.google.common.io.Resources;
 import com.google.gson.Gson;
 import org.junit.Assume;
 
 import javax.annotation.Nullable;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.net.ServerSocket;
+import java.net.URL;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class Tests {
 
@@ -22,13 +27,21 @@ public class Tests {
         }
     }
 
-    public static class OauthClientConfig extends OauthConfig {
+    public static String loadResourceAsString(String resourcePath) throws IOException {
+        URL resource = Tests.class.getResource(resourcePath);
+        if (resource == null) {
+            throw new FileNotFoundException("classpath:" + resourcePath);
+        }
+        return Resources.toString(resource, UTF_8);
+    }
+
+    public static class OauthClientConfig extends OauthCredentials {
 
         @Nullable
         public Integer redirectUriPort;
 
-        public OauthClientConfig(String clientId, String clientSecret, @Nullable Integer port) {
-            super(clientId, clientSecret);
+        public OauthClientConfig(String clientId, String clientSecret, AccessBadge badge, @Nullable Integer port) {
+            super(clientId, clientSecret, badge);
             this.redirectUriPort = port;
         }
     }
