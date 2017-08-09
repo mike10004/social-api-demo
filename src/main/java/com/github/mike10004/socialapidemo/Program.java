@@ -65,6 +65,8 @@ public class Program {
         parser.accepts("print-config-template", "print a config file template and exit");
         parser.accepts("redirect-path", "set path of redirect URI (default is empty path '/')").withRequiredArg().ofType(String.class).describedAs("PATH");
         parser.accepts("print-config", "print config after parsing");
+        parser.accepts("throttle", "set throttle strategy").withRequiredArg().ofType(CrawlerConfig.ThrottleStrategy.class).describedAs("STRATEGY");
+        parser.accepts("processor", "set asset processor; file:// URI means store data in filesystem directory").withRequiredArg().ofType(String.class).describedAs("URI");
         OptionSet options = parser.parse(args);
         if (options.has("print-config-template")) {
             ProgramConfig config = new ProgramConfig();
@@ -138,8 +140,9 @@ public class Program {
                 demo.demonstrate();
                 break;
             case crawl:
-                Crawler<?> crawler = factory.getCrawler();
-                crawler.crawl(createCrawlerConfig(options));
+                CrawlerConfig crawlerConfig = createCrawlerConfig(options);
+                Crawler<?, ?> crawler = factory.getCrawler(crawlerConfig);
+                crawler.crawl();
                 break;
             default:
                 throw new IllegalStateException("mode: " + mode);
@@ -148,7 +151,10 @@ public class Program {
     }
 
     protected CrawlerConfig createCrawlerConfig(OptionSet options) {
-        return new CrawlerConfig();
+        return CrawlerConfig.builder()
+                .processorSpecUri((String) options.valueOf("processor"))
+                .throttleStrategy((CrawlerConfig.ThrottleStrategy) options.valueOf("throttle"))
+                .build();
     }
 
     protected void configureSystemProxy(Proxy.Type proxyType, @Nullable HostAndPort proxyAddress, Properties systemProperties) {
@@ -253,8 +259,8 @@ public class Program {
                     }
 
                     @Override
-                    public Crawler<?> getCrawler() {
-                        return new TwitterCrawler(twitterClient);
+                    public Crawler<?, ?> getCrawler(CrawlerConfig crawlerConfig) {
+                        return new TwitterCrawler(twitterClient, crawlerConfig);
                     }
 
                     @Override
@@ -276,8 +282,8 @@ public class Program {
                     }
 
                     @Override
-                    public Crawler<?> getCrawler() {
-                        return new FacebookCrawler(facebookClient);
+                    public Crawler<?, ?> getCrawler(CrawlerConfig crawlerConfig) {
+                        return new FacebookCrawler(facebookClient, crawlerConfig);
                     }
 
                     @Override
@@ -295,7 +301,7 @@ public class Program {
         HttpGetter getChecker();
         Authmaster<?> getAuthmaster();
         Demonstrator<?> getDemonstrator();
-        Crawler<?> getCrawler();
+        Crawler<?, ?> getCrawler(CrawlerConfig crawlerConfig);
     }
 
     private enum HttpCheckResult {
