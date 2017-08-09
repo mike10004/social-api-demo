@@ -11,7 +11,7 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.junit.Assert.*;
 
-public class QueuedTitratorTest {
+public class CountingTitratorTest {
 
     private static class ConsumeTestCase {
 
@@ -49,7 +49,7 @@ public class QueuedTitratorTest {
             int dosesPerPeriod = testCase.dosesPerPeriod, numToConsume = testCase.numToConsume;
             Duration period = testCase.period;
             System.out.format("dosesPerPeriod=%d, period=%s, numToConsume=%d; ", dosesPerPeriod, period, numToConsume);
-            QueuedTitrator titrator = new QueuedTitrator(dosesPerPeriod, period);
+            Titrator titrator = createTitrator(dosesPerPeriod, period);
             // should take < 4 seconds to consume 10 permits
             Stopwatch watch = Stopwatch.createStarted();
             for (int numConsumed = 0; numConsumed < numToConsume; numConsumed++) {
@@ -67,8 +67,12 @@ public class QueuedTitratorTest {
     public void tryConsume() throws Exception {
         int dosesPerPeriod = 1;
         Duration period = Duration.ofSeconds(10);
-        QueuedTitrator titrator = new QueuedTitrator(dosesPerPeriod, period);
+        Titrator titrator = createTitrator(dosesPerPeriod, period);
         titrator.consume();
         assertFalse(titrator.tryConsume());
+    }
+
+    private Titrator createTitrator(int dosesPerPeriod, Duration period) {
+        return new CountingTitrator(dosesPerPeriod, period);
     }
 }

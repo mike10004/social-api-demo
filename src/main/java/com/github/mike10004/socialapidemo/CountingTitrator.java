@@ -1,44 +1,39 @@
 package com.github.mike10004.socialapidemo;
 
+import com.google.common.math.LongMath;
 import com.google.common.util.concurrent.RateLimiter;
 
 import java.time.Duration;
-import java.util.LinkedList;
-import java.util.Queue;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class QueuedTitrator implements Titrator {
-
-    private static final Object DOSE = new Object();
+public class CountingTitrator implements Titrator {
 
     private final int numDosesPerPeriod;
     private final RateLimiter rateLimiter;
-    private final Queue<Object> doseQueue;
-    private transient final Object queueLock;
+    private long numDosesAvailable;
+    private transient final Object doseLock;
 
-    protected QueuedTitrator(int numDosesPerPeriod, Duration period) {
+    protected CountingTitrator(int numDosesPerPeriod, Duration period) {
         checkArgument(numDosesPerPeriod > 0, "numDosesPerPeriod must be positive, not %s", numDosesPerPeriod);
         checkArgument(!period.isNegative() && !period.isZero(), "period must have positive length: %s", period);
         this.numDosesPerPeriod = numDosesPerPeriod;
-        double numSeconds = durationToFractionalSeconds(period);
+        double numSeconds = Titrator.durationToFractionalSeconds(period);
         rateLimiter = RateLimiter.create(1 / numSeconds);
-        doseQueue = new LinkedList<>();
-        queueLock = new Object();
+        numDosesAvailable = 0L;
+        doseLock = new Object();
     }
 
     /**
      * Consumes a dose from this titrator, blocking until a dose is available.
      */
     public void consume() {
-        synchronized (queueLock) {
-            if (doseQueue.peek() == null) { // then refill the queue
+        synchronized (doseLock) {
+            if (numDosesAvailable == 0) { // then refill
                 rateLimiter.acquire();
-                for (int i = 0; i < numDosesPerPeriod; i++) {
-                    doseQueue.add(DOSE);
-                }
+                numDosesAvailable = LongMath.checkedAdd(numDosesAvailable, numDosesPerPeriod);
             }
-            doseQueue.remove();
+            numDosesAvailable = LongMath.checkedSubtract(numDosesAvailable, 1);
         }
     }
 
@@ -47,12 +42,9 @@ public class QueuedTitrator implements Titrator {
      * @return true if a dose was available (and consumed), false otherwise
      */
     public boolean tryConsume() {
-        synchronized (queueLock) {
-            return doseQueue.poll() != null;
+        synchronized (doseLock) {
+            return numDosesAvailable > 0;
         }
     }
 
-    static double durationToFractionalSeconds(Duration period) {
-        return period.getSeconds() + period.getNano() / 1000000000d;
-    }
 }
