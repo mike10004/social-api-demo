@@ -4,6 +4,8 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nullable;
+import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
 
@@ -29,7 +31,7 @@ public abstract class CrawlNode<T, E extends Exception> implements CheckedCallab
         return ImmutableList.of();
     }
 
-    public Iterable<CrawlNode<?, E>> findNextTargets(T asset) throws E {
+    public Collection<CrawlNode<?, E>> findNextTargets(T asset) throws E {
         return ImmutableList.of();
     }
 

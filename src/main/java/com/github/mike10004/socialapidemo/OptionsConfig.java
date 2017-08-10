@@ -1,11 +1,13 @@
 package com.github.mike10004.socialapidemo;
 
+import com.google.common.base.MoreObjects;
 import joptsimple.OptionSet;
 
 import javax.annotation.Nullable;
 import java.io.File;
 import java.net.URI;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 
 public class OptionsConfig extends CrawlerConfig {
@@ -13,6 +15,8 @@ public class OptionsConfig extends CrawlerConfig {
     public static final String OPT_THROTTLE = "throttle";
     public static final String OPT_PROCESSOR = "processor";
     public static final String OPT_MAX_ERRORS = "max-errors";
+    public static final String OPT_MAX_ASSETS = "max-assets";
+    public static final String OPT_QUEUE_CAPACITY = "queue-capacity";
 
     private Program.Sns sns;
     private OptionSet options;
@@ -73,5 +77,22 @@ public class OptionsConfig extends CrawlerConfig {
             return ErrorReactor.limiter(maxErrors);
         }
         return super.buildErrorReactor();
+    }
+
+    private <N extends Number> N maybeGet(String flag, N defaultValue) {
+        checkNotNull(defaultValue, "must provide non-null default for %s", flag);
+        @SuppressWarnings("unchecked")
+        @Nullable N value = (N) options.valueOf(flag);
+        return MoreObjects.firstNonNull(value, defaultValue);
+    }
+
+    @Override
+    public int getQueueCapacity() {
+        return maybeGet(OPT_QUEUE_CAPACITY, super.getQueueCapacity());
+    }
+
+    @Override
+    public long getAssetCountLimit() {
+        return maybeGet(OPT_MAX_ASSETS, super.getAssetCountLimit());
     }
 }

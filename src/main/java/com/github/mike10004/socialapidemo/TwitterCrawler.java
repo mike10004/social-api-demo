@@ -1,14 +1,28 @@
 package com.github.mike10004.socialapidemo;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
+import com.google.common.math.IntMath;
+import com.google.common.primitives.Longs;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import twitter4j.RateLimitStatus;
 import twitter4j.Twitter;
 import twitter4j.TwitterException;
 import twitter4j.User;
 
+import javax.annotation.Nullable;
+import java.time.Duration;
+import java.util.Collection;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class TwitterCrawler extends Crawler<Twitter, TwitterException> {
+
+    private static final Logger log = LoggerFactory.getLogger(TwitterCrawler.class);
 
     public TwitterCrawler(Twitter client, CrawlerConfig crawlerConfig) {
         super(client, crawlerConfig);
@@ -16,23 +30,66 @@ public class TwitterCrawler extends Crawler<Twitter, TwitterException> {
 
     @Override
     protected Iterator<CrawlNode<?, TwitterException>> getSeedGenerator() {
-        CrawlNode<User, TwitterException> userProfileAction = new CrawlNode<User, TwitterException>(Cat.account_verify_credentials){
-            @Override
-            public Iterable<String> getLineage(User asset) {
-                return ImmutableList.of(String.valueOf(asset.getId()));
-            }
-
-            @Override
-            public User call() throws TwitterException {
-                return client.verifyCredentials();
-            }
-        };
-        List<CrawlNode<?, TwitterException>> crawlNodes = ImmutableList.of(userProfileAction);
+        List<CrawlNode<?, TwitterException>> crawlNodes = ImmutableList.of(new AuthenticatedUserProfileNode());
         return crawlNodes.iterator();
     }
 
-    protected boolean isRateLimitException(TwitterException exception) {
-        return exception.exceededRateLimitation();
+    abstract class UserProfileNode extends CrawlNode<User, TwitterException> {
+
+        private static final int MAX_FOLLOWSHIP_BRANCHES = 100;
+
+        public UserProfileNode(@Nullable String category) {
+            super(category);
+        }
+        @Override
+        public Iterable<String> getLineage(User asset) {
+            return ImmutableList.of(String.valueOf(asset.getId()));
+        }
+
+        @Override
+        public Collection<CrawlNode<?, TwitterException>> findNextTargets(User asset) throws TwitterException {
+            twitter4j.IDs followerIds = client.friendsFollowers().getFollowersIDs(asset.getId(), -1, MAX_FOLLOWSHIP_BRANCHES);
+            twitter4j.IDs followeeIds = client.friendsFollowers().getFriendsIDs(asset.getId(), -1, MAX_FOLLOWSHIP_BRANCHES);
+            Set<Long> ids = new LinkedHashSet<>(IntMath.checkedAdd(followerIds.getIDs().length, followeeIds.getIDs().length));
+            Iterables.addAll(ids, Iterables.limit(Longs.asList(followerIds.getIDs()), MAX_FOLLOWSHIP_BRANCHES));
+            Iterables.addAll(ids, Iterables.limit(Longs.asList(followeeIds.getIDs()), MAX_FOLLOWSHIP_BRANCHES));
+            return ids.stream().map(OtherUserProfileNode::new).collect(Collectors.toList());
+//            return ImmutableList.of();
+        }
+
+        @Override
+        public String identify(User asset) {
+            return String.valueOf("u/" + asset.getId());
+        }
+    }
+
+    class AuthenticatedUserProfileNode extends UserProfileNode {
+
+        public AuthenticatedUserProfileNode() {
+            super(Cat.account_verify_credentials);
+        }
+
+        @Override
+        public User call() throws TwitterException {
+            return client.verifyCredentials();
+        }
+
+    }
+
+    class OtherUserProfileNode extends UserProfileNode {
+
+        private final long userId;
+
+        OtherUserProfileNode(long userId) {
+            super(Cat.users_show);
+            this.userId = userId;
+        }
+
+        @Override
+        public User call() throws TwitterException {
+            return client.showUser(userId);
+        }
+
     }
 
     /**
@@ -85,4 +142,14 @@ public class TwitterCrawler extends Crawler<Twitter, TwitterException> {
         public static final String users_suggestions__slug_members = "users/suggestions/:slug/members";
     }
 
+    @Override
+    protected void maybeHandleRateLimitException(TwitterException exception) {
+        if (exception.exceededRateLimitation()) {
+            RateLimitStatus rateLimitStatus = exception.getRateLimitStatus();
+            int secondsUntilReset = rateLimitStatus.getSecondsUntilReset();
+            long secondsToSleep = secondsUntilReset + 1L;
+            LoggerFactory.getLogger(getClass()).debug("rate limit exception heard; sleeping for %d seconds", secondsUntilReset);
+            crawlerConfig.getSleeper().sleep(Duration.ofSeconds(secondsToSleep));
+        }
+    }
 }

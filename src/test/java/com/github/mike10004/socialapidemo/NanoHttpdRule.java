@@ -2,7 +2,9 @@ package com.github.mike10004.socialapidemo;
 
 import com.google.common.net.HostAndPort;
 import fi.iki.elonen.NanoHTTPD;
+import org.apache.commons.lang3.StringUtils;
 import org.junit.rules.ExternalResource;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.net.ServerSocket;
@@ -29,7 +31,10 @@ public class NanoHttpdRule extends ExternalResource {
         NanoHTTPD.Response NOT_FOUND_RESPONSE = NanoHTTPD.newFixedLengthResponse(NanoHTTPD.Response.Status.NOT_FOUND, "text/plain", "404 Not Found");
 
         static RequestHandler getDefault() {
-            return (session) -> NOT_FOUND_RESPONSE;
+            return (session) -> {
+                LoggerFactory.getLogger(RequestHandler.class.getName() + ".default").debug("404 {} {}", session.getUri(), StringUtils.abbreviate(session.getQueryParameterString(), 128));
+                return NOT_FOUND_RESPONSE;
+            };
         }
 
     }

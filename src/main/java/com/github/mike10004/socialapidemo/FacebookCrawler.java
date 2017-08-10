@@ -17,4 +17,10 @@ public class FacebookCrawler extends Crawler<Facebook, FacebookException> {
         return RATE_LIMIT_ERROR_CODES.contains(errorCode);
     }
 
+    @Override
+    protected void maybeHandleRateLimitException(FacebookException exception) {
+        if (isRateLimitException(exception)) {
+            throw new CrawlerException("facebook rate limit breached");
+        }
+    }
 }

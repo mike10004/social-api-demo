@@ -98,7 +98,7 @@
         <dependency>
             <groupId>com.github.mike10004</groupId>
             <artifactId>twitter4j-core</artifactId>
-            <version>4.0.4p2</version>
+            <version>4.0.4p3</version>
         </dependency>
         <dependency>
             <groupId>com.github.mike10004</groupId>
@@ -125,6 +125,12 @@
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
             <version>2.5</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.5</version>
             <scope>test</scope>
         </dependency>
 

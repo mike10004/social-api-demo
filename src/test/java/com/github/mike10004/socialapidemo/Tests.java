@@ -27,6 +27,14 @@ public class Tests {
         }
     }
 
+    public static String loadResourceAsStringQuietly(String resourcePath) {
+        try {
+            return loadResourceAsString(resourcePath);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public static String loadResourceAsString(String resourcePath) throws IOException {
         URL resource = Tests.class.getResource(resourcePath);
         if (resource == null) {

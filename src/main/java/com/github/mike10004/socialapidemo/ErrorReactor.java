@@ -31,6 +31,7 @@ public interface ErrorReactor {
         private final long maxErrors;
         private final AtomicLong errorCounter;
         private final Map<Long, Exception> exceptions;
+
         public LimitedErrorReactor(long maxErrors) {
             this.maxErrors = maxErrors;
             errorCounter = new AtomicLong(0L);

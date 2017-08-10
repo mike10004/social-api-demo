@@ -63,4 +63,12 @@ public abstract class CrawlerConfig {
     protected VisitRecorder buildVisitRecorder() {
         return VisitRecorder.inMemory();
     }
+
+    public Sleeper getSleeper() {
+        return Sleeper.system();
+    }
+
+    public long getAssetCountLimit() {
+        return Long.MAX_VALUE;
+    }
 }

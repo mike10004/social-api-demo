@@ -6,6 +6,7 @@ import com.google.common.primitives.Chars;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
@@ -85,7 +86,7 @@ public class CrawlerTest {
             }
 
             @Override
-            public Iterable<CrawlNode> findNextTargets(Object asset) throws Exception {
+            public Collection<CrawlNode> findNextTargets(Object asset) throws Exception {
                 String branches = branchifier.apply((Character) asset);
                 List<Character> chars = Chars.asList(branches.toCharArray());
                 List<CrawlNode> crawlNodes = chars.stream().map(ch -> actionify(ch, branchifier)).collect(Collectors.toList());
@@ -107,9 +108,12 @@ public class CrawlerTest {
         };
         int numSeeds = 10, errorLimit = 7;
         ErrorReactor.LimitedErrorReactor reactor = ErrorReactor.limiter(errorLimit);
-        CrawlerConfig crawlerConfig = DirectConfig.builder()
-                .errorReactor(reactor)
-                .build();
+        CrawlerConfig crawlerConfig = new CrawlerConfig() {
+            @Override
+            protected ErrorReactor buildErrorReactor() {
+                return reactor;
+            }
+        };
         Crawler<?, ?> crawler = new Crawler<TestClient, TestException>(new TestClient(), crawlerConfig) {
             @Override
             protected Iterator<CrawlNode<?, TestException>> getSeedGenerator() {

@@ -68,6 +68,8 @@ public class Program {
         parser.accepts(OptionsConfig.OPT_THROTTLE, "set throttle strategy").withRequiredArg().ofType(OptionsConfig.ThrottleStrategy.class).describedAs("STRATEGY").defaultsTo(OptionsConfig.ThrottleStrategy.SNS_API_DEFAULT);
         parser.accepts(OptionsConfig.OPT_PROCESSOR, "set asset processor; URI with file:// scheme means store data in specified directory").withRequiredArg().ofType(String.class).describedAs("URI");
         parser.accepts(OptionsConfig.OPT_MAX_ERRORS, "tolerate MAX errors before aborting").withRequiredArg().ofType(Integer.class).describedAs("MAX");
+        parser.accepts(OptionsConfig.OPT_MAX_ASSETS, "terminate after MAX assets processed").withRequiredArg().ofType(Long.class).describedAs("MAX");
+        parser.accepts(OptionsConfig.OPT_QUEUE_CAPACITY, "set capacity of crawl node queue").withRequiredArg().ofType(Integer.class).describedAs("CAPACITY");
         OptionSet options = parser.parse(args);
         if (options.has("print-config-template")) {
             ProgramConfig config = new ProgramConfig();
