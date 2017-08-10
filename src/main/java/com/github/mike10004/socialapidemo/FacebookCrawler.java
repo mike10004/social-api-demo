@@ -18,7 +18,7 @@ public class FacebookCrawler extends Crawler<Facebook, FacebookException> {
     }
 
     @Override
-    protected void maybeHandleRateLimitException(FacebookException exception) {
+    protected void maybeHandleRateLimitException(FacebookException exception, RemainingActionsStatus remaining) {
         if (isRateLimitException(exception)) {
             throw new CrawlerException("facebook rate limit breached");
         }

@@ -15,12 +15,33 @@ import joptsimple.OptionSet;
 import twitter4j.Twitter;
 
 import javax.annotation.Nullable;
-import java.io.*;
-import java.net.*;
+import java.io.File;
+import java.io.FilterOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintStream;
+import java.io.PrintWriter;
+import java.io.Reader;
+import java.io.Writer;
+import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.net.Proxy;
+import java.net.URL;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.BiFunction;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.Level;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -56,9 +77,28 @@ public class Program {
 
     private static final String DEFAULT_CONFIG_FILENAME = "social-load-config.json";
 
+    static void logVerbosely(PrintStream output) {
+        java.util.logging.Logger logger = java.util.logging.Logger.getLogger("com.github.mike10004");
+        logger.setUseParentHandlers(false);
+        Level level = Level.ALL;
+        ConsoleHandler handler = new ConsoleHandler() {{
+            setOutputStream(output);
+        }};
+        handler.setLevel(level);
+        logger.setLevel(Level.FINEST);
+        logger.addHandler(handler);
+    }
+
+    /**
+     * Executes the program.
+     * @param args array of arguments in syntax {@code PROXY MODE SNS},
+     *             for example {@code localhost:36361 crawl twitter}
+     * @return exit code
+     */
     protected int main0(String...args) throws Exception {
         OptionParser parser = new OptionParser();
         File defaultConfigSourceFile = new File(System.getProperty("user.dir"), DEFAULT_CONFIG_FILENAME);
+        parser.accepts("debug", "log verbosely on stdout");
         parser.acceptsAll(Arrays.asList("f", "config-file"), "config file; default is $PWD/" + DEFAULT_CONFIG_FILENAME).withRequiredArg().ofType(File.class).defaultsTo(defaultConfigSourceFile).describedAs("FILE");
         parser.accepts("proxy-type").withRequiredArg().ofType(Proxy.Type.class).defaultsTo(Proxy.Type.SOCKS).describedAs("TYPE");
         parser.accepts("port", "port to use for authorization redirect callback URL; required in authorization mode").withRequiredArg().ofType(Integer.class);
@@ -71,6 +111,9 @@ public class Program {
         parser.accepts(OptionsConfig.OPT_MAX_ASSETS, "terminate after MAX assets processed").withRequiredArg().ofType(Long.class).describedAs("MAX");
         parser.accepts(OptionsConfig.OPT_QUEUE_CAPACITY, "set capacity of crawl node queue").withRequiredArg().ofType(Integer.class).describedAs("CAPACITY");
         OptionSet options = parser.parse(args);
+        if (options.has("debug")) {
+            logVerbosely(System.out);
+        }
         if (options.has("print-config-template")) {
             ProgramConfig config = new ProgramConfig();
             config.oauthClients = new HashMap<>();

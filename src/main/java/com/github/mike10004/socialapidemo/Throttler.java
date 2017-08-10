@@ -7,6 +7,16 @@ public interface Throttler {
     void delay(@Nullable String category);
 
     static Throttler inactive() {
-        return category -> { /* no op */};
+        return new Throttler() {
+            @Override
+            public void delay(@Nullable String category) {
+                // no op
+            }
+
+            @Override
+            public String toString() {
+                return "InactiveThrottler{}";
+            }
+        };
     }
 }

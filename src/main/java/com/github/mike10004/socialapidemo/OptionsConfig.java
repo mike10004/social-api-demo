@@ -2,6 +2,8 @@ package com.github.mike10004.socialapidemo;
 
 import com.google.common.base.MoreObjects;
 import joptsimple.OptionSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.File;
@@ -11,6 +13,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 
 public class OptionsConfig extends CrawlerConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(OptionsConfig.class);
 
     public static final String OPT_THROTTLE = "throttle";
     public static final String OPT_PROCESSOR = "processor";
@@ -34,6 +38,12 @@ public class OptionsConfig extends CrawlerConfig {
     @Override
     public Throttler buildThrottler() {
         ThrottleStrategy throttleStrategy = (ThrottleStrategy) options.valueOf(OPT_THROTTLE);
+        Throttler throttler = buildThrottler(throttleStrategy);
+        log.debug("throttle strategy {} yields {}", throttleStrategy, throttler);
+        return throttler;
+    }
+
+    private Throttler buildThrottler(ThrottleStrategy throttleStrategy) {
         checkState(throttleStrategy != null, "no throttle strategy defined");
         switch (throttleStrategy) {
             case NONE:

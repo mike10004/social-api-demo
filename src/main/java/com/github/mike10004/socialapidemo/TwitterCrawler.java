@@ -10,6 +10,7 @@ import twitter4j.RateLimitStatus;
 import twitter4j.Twitter;
 import twitter4j.TwitterException;
 import twitter4j.User;
+import twitter4j.api.FriendsFollowersResources;
 
 import javax.annotation.Nullable;
 import java.time.Duration;
@@ -36,7 +37,7 @@ public class TwitterCrawler extends Crawler<Twitter, TwitterException> {
 
     abstract class UserProfileNode extends CrawlNode<User, TwitterException> {
 
-        private static final int MAX_FOLLOWSHIP_BRANCHES = 100;
+        private static final int MAX_FOLLOWSHIP_BRANCHES = 8;
 
         public UserProfileNode(@Nullable String category) {
             super(category);
@@ -48,13 +49,13 @@ public class TwitterCrawler extends Crawler<Twitter, TwitterException> {
 
         @Override
         public Collection<CrawlNode<?, TwitterException>> findNextTargets(User asset) throws TwitterException {
-            twitter4j.IDs followerIds = client.friendsFollowers().getFollowersIDs(asset.getId(), -1, MAX_FOLLOWSHIP_BRANCHES);
-            twitter4j.IDs followeeIds = client.friendsFollowers().getFriendsIDs(asset.getId(), -1, MAX_FOLLOWSHIP_BRANCHES);
+            FriendsFollowersResources ff = client.friendsFollowers();
+            twitter4j.IDs followerIds = throttle(Cat.followers_ids, () -> ff.getFollowersIDs(asset.getId(), -1, MAX_FOLLOWSHIP_BRANCHES));
+            twitter4j.IDs followeeIds = throttle(Cat.friends_ids, () -> ff.getFriendsIDs(asset.getId(), -1, MAX_FOLLOWSHIP_BRANCHES));
             Set<Long> ids = new LinkedHashSet<>(IntMath.checkedAdd(followerIds.getIDs().length, followeeIds.getIDs().length));
             Iterables.addAll(ids, Iterables.limit(Longs.asList(followerIds.getIDs()), MAX_FOLLOWSHIP_BRANCHES));
             Iterables.addAll(ids, Iterables.limit(Longs.asList(followeeIds.getIDs()), MAX_FOLLOWSHIP_BRANCHES));
             return ids.stream().map(OtherUserProfileNode::new).collect(Collectors.toList());
-//            return ImmutableList.of();
         }
 
         @Override
@@ -143,13 +144,15 @@ public class TwitterCrawler extends Crawler<Twitter, TwitterException> {
     }
 
     @Override
-    protected void maybeHandleRateLimitException(TwitterException exception) {
+    protected void maybeHandleRateLimitException(TwitterException exception, RemainingActionsStatus remaining) {
         if (exception.exceededRateLimitation()) {
             RateLimitStatus rateLimitStatus = exception.getRateLimitStatus();
             int secondsUntilReset = rateLimitStatus.getSecondsUntilReset();
-            long secondsToSleep = secondsUntilReset + 1L;
-            LoggerFactory.getLogger(getClass()).debug("rate limit exception heard; sleeping for %d seconds", secondsUntilReset);
-            crawlerConfig.getSleeper().sleep(Duration.ofSeconds(secondsToSleep));
+            Duration sleepDuration = Duration.ofSeconds(secondsUntilReset + 1L);
+            log.info("rate limit exception heard; sleeping for {} seconds ({})", sleepDuration.getSeconds(), sleepDuration);
+            if (remaining == RemainingActionsStatus.SOME) {
+                crawlerConfig.getSleeper().sleep(sleepDuration);
+            }
         }
     }
 }

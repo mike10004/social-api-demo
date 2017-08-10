@@ -57,12 +57,13 @@ public abstract class Crawler<C, X extends Exception> {
             queue.add(seed);
             while (isUnderAssetCountLimit() && !queue.isEmpty()) {
                 CrawlNode<?, X> target = queue.remove();
-                Iterable<CrawlNode<?, X>> branches = acquire(target);
+                RemainingActionsStatus remaining = (!seeds.hasNext() && queue.isEmpty()) ? RemainingActionsStatus.NONE : RemainingActionsStatus.SOME;
+                Iterable<CrawlNode<?, X>> branches = acquire(target, remaining);
                 branches.forEach(queue::offer);
             }
-            log.debug("proceeding to next seed because queue exhausted or asset limit reached");
+            log.debug("proceeding to next seed because queue exhausted or asset limit reached ({} assets)", assetCounter.get());
         }
-        log.debug("seeds exhausted or asset limit reached; terminating crawl");
+        log.debug("seeds exhausted or asset limit reached ({} assets); terminating crawl", assetCounter.get());
     }
 
     protected Iterator<CrawlNode<?, X>> getSeedGenerator() {
@@ -85,12 +86,20 @@ public abstract class Crawler<C, X extends Exception> {
         return crawlerConfig.getVisitRecorder();
     }
 
-    protected <T> Iterable<CrawlNode<?, X>> acquire(CrawlNode<T, X> crawlNode) throws X {
-        String category = crawlNode.getCategory();
+    protected <T> T throttle(String category, CheckedCallable<T, X> callable) throws X {
         Throttler throttler = getThrottler();
         throttler.delay(category);
+        return callable.call();
+    }
+
+    protected enum RemainingActionsStatus {
+        NONE, SOME
+    }
+
+    protected <T> Iterable<CrawlNode<?, X>> acquire(CrawlNode<T, X> crawlNode, RemainingActionsStatus remaining) throws X {
+        String category = crawlNode.getCategory();
         try {
-            T asset = crawlNode.call();
+            T asset = throttle(category, crawlNode);
             String identifier = crawlNode.identify(asset);
             boolean newVisit = getVisitRecorder().recordVisit(identifier);
             if (asset != null && newVisit) {
@@ -110,13 +119,13 @@ public abstract class Crawler<C, X extends Exception> {
             } catch (ClassCastException classCastException) {
                 throw new AssertionError("expected different exception class from " + exception, classCastException);
             }
-            maybeHandleRateLimitException(typedException);
+            maybeHandleRateLimitException(typedException, remaining);
             getErrorReactor().react(typedException);
         }
         return ImmutableList.of();
     }
 
-    protected void maybeHandleRateLimitException(X exception) {
+    protected void maybeHandleRateLimitException(X exception, RemainingActionsStatus remaining) {
         // no op; subclasses override to, e.g., wait for rate limit window reset
     }
 }
