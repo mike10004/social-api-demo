@@ -55,7 +55,9 @@ public class TwitterCrawlerTest {
         checkState(oauthConfig.badge.accessSecret != null, "oauth access badge secret absent");
         File storageRoot = temporaryFolder.getRoot();
         System.out.format("%s is storage root%n", storageRoot);
-        CrawlerConfig crawlerConfig = new DirectConfig(new TwitterThrottler(), new FileStoringAssetProcessor(storageRoot.toPath(), new TwitterAssetSerializer()));
+        CrawlerConfig crawlerConfig = DirectConfig.builder().throttler(new TwitterThrottler())
+                .assetProcessor(new FileStoringAssetProcessor(storageRoot.toPath(), new TwitterAssetSerializer()))
+                .build();
         TwitterCrawler crawler = new TwitterCrawler(client, crawlerConfig);
         crawler.crawl();
         System.out.format("httpdrule heard %d requests and matched %d%n", httpdRule.getNumRequestsHeard(), httpdRule.getNumRequestsMatched());

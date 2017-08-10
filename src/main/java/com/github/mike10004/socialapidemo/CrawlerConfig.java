@@ -41,10 +41,15 @@ public abstract class CrawlerConfig {
 
     protected abstract Throttler buildThrottler();
 
-    protected abstract AssetProcessor buildAssetProcessor();
+    protected AssetProcessor buildAssetProcessor() {
+        return AssetProcessor.logging();
+    }
 
     protected ErrorReactor buildErrorReactor() {
         return ErrorReactor.rethrower();
     }
 
+    public int getQueueCapacity() {
+        return 8192;
+    }
 }

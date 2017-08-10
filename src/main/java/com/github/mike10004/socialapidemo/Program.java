@@ -66,7 +66,8 @@ public class Program {
         parser.accepts("redirect-path", "set path of redirect URI (default is empty path '/')").withRequiredArg().ofType(String.class).describedAs("PATH");
         parser.accepts("print-config", "print config after parsing");
         parser.accepts(OptionsConfig.OPT_THROTTLE, "set throttle strategy").withRequiredArg().ofType(OptionsConfig.ThrottleStrategy.class).describedAs("STRATEGY").defaultsTo(OptionsConfig.ThrottleStrategy.SNS_API_DEFAULT);
-        parser.accepts(OptionsConfig.OPT_PROCESSOR, "set asset processor; file:// URI means store data in filesystem directory").withRequiredArg().ofType(String.class).describedAs("URI");
+        parser.accepts(OptionsConfig.OPT_PROCESSOR, "set asset processor; URI with file:// scheme means store data in specified directory").withRequiredArg().ofType(String.class).describedAs("URI");
+        parser.accepts(OptionsConfig.OPT_MAX_ERRORS, "tolerate MAX errors before aborting").withRequiredArg().ofType(Integer.class).describedAs("MAX");
         OptionSet options = parser.parse(args);
         if (options.has("print-config-template")) {
             ProgramConfig config = new ProgramConfig();

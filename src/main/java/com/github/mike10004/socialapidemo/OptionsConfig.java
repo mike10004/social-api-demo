@@ -2,6 +2,7 @@ package com.github.mike10004.socialapidemo;
 
 import joptsimple.OptionSet;
 
+import javax.annotation.Nullable;
 import java.io.File;
 import java.net.URI;
 
@@ -12,6 +13,7 @@ public class OptionsConfig extends CrawlerConfig {
 
     public static final String OPT_THROTTLE = "throttle";
     public static final String OPT_PROCESSOR = "processor";
+    public static final String OPT_MAX_ERRORS = "max-errors";
 
     private Program.Sns sns;
     private OptionSet options;
@@ -63,6 +65,15 @@ public class OptionsConfig extends CrawlerConfig {
             }
             throw new IllegalStateException("not handled: " + storageSpecUriStr);
         }
-        return AssetProcessor.logging();
+        return super.buildAssetProcessor();
+    }
+
+    @Override
+    protected ErrorReactor buildErrorReactor() {
+        @Nullable Integer maxErrors = (Integer) options.valueOf(OPT_MAX_ERRORS);
+        if (maxErrors != null) {
+            return ErrorReactor.limiter(maxErrors);
+        }
+        return super.buildErrorReactor();
     }
 }

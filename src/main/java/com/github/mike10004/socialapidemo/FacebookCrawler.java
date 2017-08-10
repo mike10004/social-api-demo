@@ -12,11 +12,6 @@ public class FacebookCrawler extends Crawler<Facebook, FacebookException> {
         super(client, crawlerConfig);
     }
 
-    @Override
-    public void crawl() throws CrawlerException {
-        throw new UnsupportedOperationException("not yet implemented");
-    }
-
     protected boolean isRateLimitException(FacebookException exception) {
         int errorCode = exception.getErrorCode();
         return RATE_LIMIT_ERROR_CODES.contains(errorCode);

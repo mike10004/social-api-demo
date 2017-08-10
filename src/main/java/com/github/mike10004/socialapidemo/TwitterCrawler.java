@@ -5,6 +5,9 @@ import twitter4j.Twitter;
 import twitter4j.TwitterException;
 import twitter4j.User;
 
+import java.util.Iterator;
+import java.util.List;
+
 public class TwitterCrawler extends Crawler<Twitter, TwitterException> {
 
     public TwitterCrawler(Twitter client, CrawlerConfig crawlerConfig) {
@@ -12,8 +15,8 @@ public class TwitterCrawler extends Crawler<Twitter, TwitterException> {
     }
 
     @Override
-    public void crawl() throws CrawlerException, TwitterException {
-        acquire(new Action<User, TwitterException>(Cat.account_verify_credentials){
+    protected Iterator<Action<?, TwitterException>> getSeedGenerator() {
+        Action<User, TwitterException> userProfileAction = new Action<User, TwitterException>(Cat.account_verify_credentials){
             @Override
             public Iterable<String> getLineage(User asset) {
                 return ImmutableList.of(String.valueOf(asset.getId()));
@@ -23,7 +26,9 @@ public class TwitterCrawler extends Crawler<Twitter, TwitterException> {
             public User call() throws TwitterException {
                 return client.verifyCredentials();
             }
-        });
+        };
+        List<Action<?, TwitterException>> actions = ImmutableList.of(userProfileAction);
+        return actions.iterator();
     }
 
     protected boolean isRateLimitException(TwitterException exception) {
