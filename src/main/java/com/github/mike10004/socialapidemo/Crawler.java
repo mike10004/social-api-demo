@@ -5,7 +5,6 @@ import com.google.common.collect.Iterables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -42,14 +41,14 @@ public abstract class Crawler<C, X extends Exception> {
     }
 
     protected final void crawl(int queueCapacity) throws CrawlerException, X {
-        Iterator<Action<?, X>> seeds = getSeedGenerator();
-        BlockingQueue<Action<?, X>> queue = new ArrayBlockingQueue<>(queueCapacity);
+        Iterator<CrawlNode<?, X>> seeds = getSeedGenerator();
+        BlockingQueue<CrawlNode<?, X>> queue = new ArrayBlockingQueue<>(queueCapacity);
         while (seeds.hasNext()) {
-            Action<?, X> seed = seeds.next();
+            CrawlNode<?, X> seed = seeds.next();
             queue.add(seed);
             while (!queue.isEmpty()) {
-                Action<?, X> target = queue.remove();
-                Iterable<Action<?, X>> branches = acquire(target);
+                CrawlNode<?, X> target = queue.remove();
+                Iterable<CrawlNode<?, X>> branches = acquire(target);
                 branches.forEach(queue::offer);
             }
             log.debug("action queue exhausted; proceeding to next seed");
@@ -57,35 +56,8 @@ public abstract class Crawler<C, X extends Exception> {
         log.debug("seeds exhausted; terminating crawl");
     }
 
-    protected Iterator<Action<?, X>> getSeedGenerator() {
-        return ImmutableList.<Action<?, X>>of().iterator();
-    }
-
-    public abstract static class Action<T, E extends Exception> implements CheckedCallable<T, E> {
-
-        @Nullable
-        private final String category;
-
-        @SuppressWarnings("unused")
-        protected Action() {
-            this(null);
-        }
-
-        protected Action(@Nullable String category) {
-            this.category = category;
-        }
-
-        @Nullable
-        public String getCategory() {
-            return category;
-        }
-        public Iterable<String> getLineage(T asset) {
-            return ImmutableList.of();
-        }
-
-        public Iterable<Action<?, E>> findNextTargets(T asset) throws E {
-            return ImmutableList.of();
-        }
+    protected Iterator<CrawlNode<?, X>> getSeedGenerator() {
+        return ImmutableList.<CrawlNode<?, X>>of().iterator();
     }
 
     protected Throttler getThrottler() {
@@ -100,15 +72,20 @@ public abstract class Crawler<C, X extends Exception> {
         return crawlerConfig.getErrorReactor();
     }
 
-    protected <T> Iterable<Action<?, X>> acquire(Action<T, X> action) throws X {
-        String category = action.getCategory();
+    protected VisitRecorder getVisitRecorder() {
+        return crawlerConfig.getVisitRecorder();
+    }
+
+    protected <T> Iterable<CrawlNode<?, X>> acquire(CrawlNode<T, X> crawlNode) throws X {
+        String category = crawlNode.getCategory();
         getThrottler().delay(category);
-        T asset;
         try {
-            asset = action.call();
-            if (asset != null) {
-                getAssetProcessor().process(asset, Iterables.concat(Collections.singleton(category), action.getLineage(asset)));
-                return action.findNextTargets(asset);
+            T asset = crawlNode.call();
+            String identifier = crawlNode.identify(asset);
+            boolean newVisit = getVisitRecorder().recordVisit(identifier);
+            if (asset != null && newVisit) {
+                getAssetProcessor().process(asset, Iterables.concat(Collections.singleton(category), crawlNode.getLineage(asset)));
+                return crawlNode.findNextTargets(asset);
             }
         } catch (RuntimeException e) {
             throw e;

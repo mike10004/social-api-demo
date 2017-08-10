@@ -39,12 +39,23 @@ public class CrawlerTest {
         };
         List<Character> assets = new ArrayList<>();
         AssetProcessor assetProcessor = (asset, lineage) -> assets.add((Character)asset);
-        CrawlerConfig crawlerConfig = DirectConfig.builder().assetProcessor(assetProcessor).build();
+        VisitRecorder.MemoryVisitRecorder visitRecorder = VisitRecorder.inMemory();
+        CrawlerConfig crawlerConfig = new CrawlerConfig() {
+            @Override
+            protected AssetProcessor buildAssetProcessor() {
+                return assetProcessor;
+            }
+
+            @Override
+            protected VisitRecorder buildVisitRecorder() {
+                return visitRecorder;
+            }
+        };
         Crawler<?, ?> crawler = new Crawler<TestClient, Exception>(new TestClient(), crawlerConfig) {
             @Override
-            protected Iterator<Action<?, Exception>> getSeedGenerator() {
+            protected Iterator<CrawlNode<?, Exception>> getSeedGenerator() {
                 @SuppressWarnings("unchecked")
-                Stream<Action<?, Exception>> actions = seeds.stream().map(seed -> actionify(seed, branchifier));
+                Stream<CrawlNode<?, Exception>> actions = seeds.stream().map(seed -> actionify(seed, branchifier));
                 return actions.collect(ImmutableList.toImmutableList()).iterator();
             }
         };
@@ -53,7 +64,9 @@ public class CrawlerTest {
         String actual = new String(Chars.toArray(assets));
         System.out.format("crawl result: %s%n", actual);
         assertEquals("assets", expected, actual);
+
         assets.clear();
+        visitRecorder.reset();
 
         crawler.crawl(1); // capacity less than would be used
         expected = "abef";
@@ -63,8 +76,8 @@ public class CrawlerTest {
 
     }
 
-    private static Crawler.Action actionify(Character seed, Function<Character, String> branchifier) {
-        return new Crawler.Action() {
+    private static CrawlNode actionify(Character seed, Function<Character, String> branchifier) {
+        return new CrawlNode() {
 
             @Override
             public Object call() throws Exception {
@@ -72,11 +85,11 @@ public class CrawlerTest {
             }
 
             @Override
-            public Iterable<Crawler.Action> findNextTargets(Object asset) throws Exception {
+            public Iterable<CrawlNode> findNextTargets(Object asset) throws Exception {
                 String branches = branchifier.apply((Character) asset);
                 List<Character> chars = Chars.asList(branches.toCharArray());
-                List<Crawler.Action> actions = chars.stream().map(ch -> actionify(ch, branchifier)).collect(Collectors.toList());
-                return actions;
+                List<CrawlNode> crawlNodes = chars.stream().map(ch -> actionify(ch, branchifier)).collect(Collectors.toList());
+                return crawlNodes;
             }
         };
 
@@ -86,7 +99,7 @@ public class CrawlerTest {
 
     @Test
     public void limitErrors() throws Exception {
-        Crawler.Action<Void, TestException> action = new Crawler.Action<Void, TestException>() {
+        CrawlNode<Void, TestException> crawlNode = new CrawlNode<Void, TestException>() {
             @Override
             public Void call() throws TestException {
                 throw new TestException();
@@ -99,9 +112,9 @@ public class CrawlerTest {
                 .build();
         Crawler<?, ?> crawler = new Crawler<TestClient, TestException>(new TestClient(), crawlerConfig) {
             @Override
-            protected Iterator<Action<?, TestException>> getSeedGenerator() {
+            protected Iterator<CrawlNode<?, TestException>> getSeedGenerator() {
                 //noinspection unchecked
-                return (Iterator) repeat(action, numSeeds).iterator();
+                return (Iterator) repeat(crawlNode, numSeeds).iterator();
             }
         };
         try {

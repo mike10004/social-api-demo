@@ -20,6 +20,7 @@ public abstract class CrawlerConfig {
                     case "throttler": return buildThrottler();
                     case "assetProcessor": return buildAssetProcessor();
                     case "errorReactor": return buildErrorReactor();
+                    case "visitRecorder": return buildVisitRecorder();
                     default:
                         throw new IllegalArgumentException("unknown service: " + key);
                 }
@@ -39,7 +40,13 @@ public abstract class CrawlerConfig {
         return (ErrorReactor) serviceCache.getUnchecked("errorReactor");
     }
 
-    protected abstract Throttler buildThrottler();
+    public VisitRecorder getVisitRecorder() {
+        return (VisitRecorder) serviceCache.getUnchecked("visitRecorder");
+    }
+
+    protected Throttler buildThrottler() {
+        return Throttler.inactive();
+    }
 
     protected AssetProcessor buildAssetProcessor() {
         return AssetProcessor.logging();
@@ -51,5 +58,9 @@ public abstract class CrawlerConfig {
 
     public int getQueueCapacity() {
         return 8192;
+    }
+
+    protected VisitRecorder buildVisitRecorder() {
+        return VisitRecorder.inMemory();
     }
 }

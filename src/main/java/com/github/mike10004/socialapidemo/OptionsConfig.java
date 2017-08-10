@@ -6,7 +6,6 @@ import javax.annotation.Nullable;
 import java.io.File;
 import java.net.URI;
 
-import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 
 public class OptionsConfig extends CrawlerConfig {
@@ -31,11 +30,10 @@ public class OptionsConfig extends CrawlerConfig {
     @Override
     public Throttler buildThrottler() {
         ThrottleStrategy throttleStrategy = (ThrottleStrategy) options.valueOf(OPT_THROTTLE);
-        if (throttleStrategy != null) {
-            switch (checkNotNull(throttleStrategy, "throttle strategy not set in options")) {
-                case NONE:
-                    return Throttler.inactive();
-            }
+        checkState(throttleStrategy != null, "no throttle strategy defined");
+        switch (throttleStrategy) {
+            case NONE:
+                return Throttler.inactive();
         }
         checkState(throttleStrategy == ThrottleStrategy.SNS_API_DEFAULT);
         switch (sns) {

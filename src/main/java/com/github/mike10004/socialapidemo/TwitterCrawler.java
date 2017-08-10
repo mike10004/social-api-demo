@@ -15,8 +15,8 @@ public class TwitterCrawler extends Crawler<Twitter, TwitterException> {
     }
 
     @Override
-    protected Iterator<Action<?, TwitterException>> getSeedGenerator() {
-        Action<User, TwitterException> userProfileAction = new Action<User, TwitterException>(Cat.account_verify_credentials){
+    protected Iterator<CrawlNode<?, TwitterException>> getSeedGenerator() {
+        CrawlNode<User, TwitterException> userProfileAction = new CrawlNode<User, TwitterException>(Cat.account_verify_credentials){
             @Override
             public Iterable<String> getLineage(User asset) {
                 return ImmutableList.of(String.valueOf(asset.getId()));
@@ -27,8 +27,8 @@ public class TwitterCrawler extends Crawler<Twitter, TwitterException> {
                 return client.verifyCredentials();
             }
         };
-        List<Action<?, TwitterException>> actions = ImmutableList.of(userProfileAction);
-        return actions.iterator();
+        List<CrawlNode<?, TwitterException>> crawlNodes = ImmutableList.of(userProfileAction);
+        return crawlNodes.iterator();
     }
 
     protected boolean isRateLimitException(TwitterException exception) {
