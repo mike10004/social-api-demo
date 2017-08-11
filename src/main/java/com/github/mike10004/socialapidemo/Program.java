@@ -1,5 +1,6 @@
 package com.github.mike10004.socialapidemo;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.CharSink;
 import com.google.common.io.CharSource;
@@ -10,6 +11,8 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import facebook4j.Facebook;
+import joptsimple.HelpFormatter;
+import joptsimple.OptionDescriptor;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import twitter4j.Twitter;
@@ -48,6 +51,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public class Program {
 
     private final BiFunction<Sns, OauthConfig, Object> clientFactory;
+    private PrintStream stdout = System.out;
 
     public Program(BiFunction<Sns, OauthConfig, Object> clientFactory) {
         this.clientFactory = clientFactory;
@@ -62,11 +66,11 @@ public class Program {
         System.exit(exitcode);
     }
 
-    private static CharSink stdoutSink() {
+    private CharSink nonClosingSink(PrintStream out) {
         return new CharSink() {
             @Override
             public Writer openStream() throws IOException {
-                return new OutputStreamWriter(new FilterOutputStream(System.out), StandardCharsets.UTF_8) {
+                return new OutputStreamWriter(new FilterOutputStream(out), StandardCharsets.UTF_8) {
                     @Override
                     public void close() throws IOException {
                     }
@@ -89,6 +93,8 @@ public class Program {
         logger.addHandler(handler);
     }
 
+    private static final Joiner comma = Joiner.on(", ");
+
     /**
      * Executes the program.
      * @param args array of arguments in syntax {@code PROXY MODE SNS},
@@ -98,9 +104,10 @@ public class Program {
     protected int main0(String...args) throws Exception {
         OptionParser parser = new OptionParser();
         File defaultConfigSourceFile = new File(System.getProperty("user.dir"), DEFAULT_CONFIG_FILENAME);
-        parser.accepts("debug", "log verbosely on stdout");
-        parser.acceptsAll(Arrays.asList("f", "config-file"), "config file; default is $PWD/" + DEFAULT_CONFIG_FILENAME).withRequiredArg().ofType(File.class).defaultsTo(defaultConfigSourceFile).describedAs("FILE");
-        parser.accepts("proxy-type").withRequiredArg().ofType(Proxy.Type.class).defaultsTo(Proxy.Type.SOCKS).describedAs("TYPE");
+        parser.acceptsAll(Arrays.asList("h", "help"), "print help and exit");
+        parser.accepts("debug", "log verbosely on stdout (conflicts with JVM logging system properties)");
+        parser.acceptsAll(Arrays.asList("f", "config-file"), "pathname of config file").withRequiredArg().ofType(File.class).defaultsTo(defaultConfigSourceFile).describedAs("FILE");
+        parser.accepts("proxy-type", "one of {" + comma.join(Proxy.Type.values()) + "}").withRequiredArg().ofType(Proxy.Type.class).defaultsTo(Proxy.Type.SOCKS).describedAs("TYPE");
         parser.accepts("port", "port to use for authorization redirect callback URL; required in authorization mode").withRequiredArg().ofType(Integer.class);
         parser.accepts("print-config-template", "print a config file template and exit");
         parser.accepts("redirect-path", "set path of redirect URI (default is empty path '/')").withRequiredArg().ofType(String.class).describedAs("PATH");
@@ -112,15 +119,25 @@ public class Program {
         parser.accepts(OptionsConfig.OPT_QUEUE_CAPACITY, "set capacity of crawl node queue").withRequiredArg().ofType(Integer.class).describedAs("CAPACITY");
         OptionSet options = parser.parse(args);
         if (options.has("debug")) {
-            logVerbosely(System.out);
+            logVerbosely(stdout);
+        }
+        if (options.has("help")) {
+
+            stdout.println("Arguments:");
+            stdout.println("    [options] PROXY MODE SNS");
+            stdout.format("where PROXY is of the format 'host:port' or 'DIRECT', " +
+                          "MODE is one of {%s}, SNS is one of {%s}, and [options] are as described below.%n%n",
+                          comma.join(Mode.values()), comma.join(Sns.values()));
+            parser.printHelpOn(stdout);
+            return 0;
         }
         if (options.has("print-config-template")) {
             ProgramConfig config = new ProgramConfig();
             config.oauthClients = new HashMap<>();
             config.oauthClients.put(Sns.twitter, new OauthCredentials("TWITTER_CLIENT_ID", "TWITTER_CLIENT_SECRET", new AccessBadge("TWITTER_ACCESS_TOKEN", "TWITTER_ACCESS_TOKEN_SECRET", null)));
             config.oauthClients.put(Sns.facebook, new OauthCredentials("FACEBOOK_CLIENT_ID", "FACEBOOK_CLIENT_SECRET", new AccessBadge("FACEBOOK_ACCESS_TOKEN", null, null)));
-            saveConfig(config, stdoutSink());
-            System.out.flush();
+            saveConfig(config, nonClosingSink(stdout));
+            stdout.flush();
             return 0;
         }
         @SuppressWarnings("unchecked")
@@ -155,7 +172,7 @@ public class Program {
             config = new Gson().fromJson(reader, ProgramConfig.class);
         }
         if (options.has("print-config")) {
-            saveConfig(config, stdoutSink());
+            saveConfig(config, nonClosingSink(stdout));
         }
         PerformerFactory factory = getPerformerFactory(sns, config);
         HttpGetter getter = factory.getChecker();
@@ -164,7 +181,7 @@ public class Program {
             return ERR_PROXY_CONFLICT;
         }
         if (mode == Mode.check && proxyAddress != null) {
-            System.out.format("proxy usage confirmed: %s%n", proxyAddress);
+            stdout.format("proxy usage confirmed: %s%n", proxyAddress);
         }
         switch (mode) {
             case check:
@@ -194,6 +211,10 @@ public class Program {
                 throw new IllegalStateException("mode: " + mode);
         }
         return 0;
+    }
+
+    void setStdout(PrintStream output) {
+        this.stdout = checkNotNull(output);
     }
 
     protected CrawlerConfig createCrawlerConfig(Program.Sns sns, OptionSet options) {
