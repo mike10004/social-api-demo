@@ -1,7 +1,8 @@
 package com.github.mike10004.socialapidemo;
 
+import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterables;
+import com.google.common.collect.Multimap;
 import com.google.common.math.IntMath;
 import com.google.common.primitives.Longs;
 import org.slf4j.Logger;
@@ -20,6 +21,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.LongStream;
 
 public class TwitterCrawler extends Crawler<Twitter, TwitterException> {
 
@@ -31,9 +33,17 @@ public class TwitterCrawler extends Crawler<Twitter, TwitterException> {
 
     @Override
     protected Iterator<CrawlNode<?, TwitterException>> getSeedGenerator() {
-        List<CrawlNode<?, TwitterException>> crawlNodes = ImmutableList.of(new AuthenticatedUserProfileNode());
+        List<CrawlNode<?, TwitterException>> crawlNodes;
+        TwitterCrawlerStrategy strategy = crawlerConfig.getTwitterCrawlerStrategy();
+        if (strategy.firstUserId == null) {
+            crawlNodes = ImmutableList.of(new AuthenticatedUserProfileNode());
+        } else {
+            crawlNodes = ImmutableList.of(new OtherUserProfileNode(Long.parseLong(strategy.firstUserId)));
+        }
         return crawlNodes.iterator();
     }
+
+    private static final String CAT_EDGESET = "edges";
 
     abstract class UserProfileNode extends CrawlNode<User, TwitterException> {
 
@@ -50,11 +60,13 @@ public class TwitterCrawler extends Crawler<Twitter, TwitterException> {
         @Override
         public Collection<CrawlNode<?, TwitterException>> findNextTargets(User asset) throws TwitterException {
             FriendsFollowersResources ff = client.friendsFollowers();
-            twitter4j.IDs followerIds = throttle(Cat.followers_ids, () -> ff.getFollowersIDs(asset.getId(), -1, MAX_FOLLOWSHIP_BRANCHES));
-            twitter4j.IDs followeeIds = throttle(Cat.friends_ids, () -> ff.getFriendsIDs(asset.getId(), -1, MAX_FOLLOWSHIP_BRANCHES));
+            twitter4j.IDs followerIds = throttle(Cat.followers_ids, () -> ff.getFollowersIDs(asset.getId(), -1));
+            twitter4j.IDs followeeIds = throttle(Cat.friends_ids, () -> ff.getFriendsIDs(asset.getId(), -1));
+            EdgeSet<?> edges = createEdgeSet(asset, followerIds, followeeIds);
+            getAssetProcessor().process(edges, CAT_EDGESET);
             Set<Long> ids = new LinkedHashSet<>(IntMath.checkedAdd(followerIds.getIDs().length, followeeIds.getIDs().length));
-            Iterables.addAll(ids, Iterables.limit(Longs.asList(followerIds.getIDs()), MAX_FOLLOWSHIP_BRANCHES));
-            Iterables.addAll(ids, Iterables.limit(Longs.asList(followeeIds.getIDs()), MAX_FOLLOWSHIP_BRANCHES));
+            LongStream.of(followerIds.getIDs()).limit(MAX_FOLLOWSHIP_BRANCHES).forEach(ids::add);
+            LongStream.of(followeeIds.getIDs()).limit(MAX_FOLLOWSHIP_BRANCHES).forEach(ids::add);
             return ids.stream().map(OtherUserProfileNode::new).collect(Collectors.toList());
         }
 
@@ -62,6 +74,25 @@ public class TwitterCrawler extends Crawler<Twitter, TwitterException> {
         public String identify(User asset) {
             return String.valueOf("u/" + asset.getId());
         }
+    }
+
+    private static List<String> toStringList(long[] numbers) {
+        return Longs.asList(numbers).stream().map(Object::toString).collect(Collectors.toList());
+    }
+
+    protected EdgeSet<TwitterRelationshipType> createEdgeSet(User source, twitter4j.IDs followerIds, twitter4j.IDs followeeIds) {
+        String sourceId = String.valueOf(source.getId());
+        long[] followerIdValues = followerIds.getIDs(), followeeIdValues = followeeIds.getIDs();
+        Multimap<TwitterRelationshipType, String> relationships = ArrayListMultimap.create(TwitterRelationshipType.NUM_VALUES, Math.max(followeeIdValues.length, followerIdValues.length));
+        relationships.putAll(TwitterRelationshipType.sourceFollows, toStringList(followeeIdValues));
+        relationships.putAll(TwitterRelationshipType.followsSource, toStringList(followerIdValues));
+        return new EdgeSet<>(sourceId, relationships);
+    }
+
+    public enum TwitterRelationshipType {
+        sourceFollows, followsSource;
+
+        static final int NUM_VALUES = values().length;
     }
 
     class AuthenticatedUserProfileNode extends UserProfileNode {

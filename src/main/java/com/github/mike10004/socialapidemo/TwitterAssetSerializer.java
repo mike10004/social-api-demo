@@ -17,9 +17,11 @@ public class TwitterAssetSerializer implements AssetSerializer {
             if (asset instanceof TwitterResponse) {
                 JSONObject jsonObject = ((TwitterResponse) asset).getJson();
                 String json = jsonObject.toString(2);
-                return serialize(json);
+                return toByteSource(json);
+            } else if (asset instanceof EdgeSet) {
+                return serializeEdgeSet((EdgeSet<?>) asset);
             } else {
-                log.debug("not serializing foreign object of {}", (asset == null ? "<null>" : asset.getClass()));
+                log.debug("not serializing object of {}", (asset == null ? "<null>" : asset.getClass()));
             }
         } catch (RuntimeException | JSONException e) {
             log.info("failed to serialize " + asset, e);

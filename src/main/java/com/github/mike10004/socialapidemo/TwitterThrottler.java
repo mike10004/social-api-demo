@@ -1,8 +1,10 @@
 package com.github.mike10004.socialapidemo;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.RateLimiter;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -14,8 +16,21 @@ public class TwitterThrottler extends SteadyThrottler {
 
     private static final int TWITTER_WINDOW_MINUTES = 15;
 
+    /**
+     * Margin to add to throttler's throttling. We were seeing a lot of rate limit violations
+     * where we only had to wait one more second until the rate limit reset, which means that
+     * Twitter's accounting of calls is slightly off or our throttling is just slightly too
+     * fast. Adding a delay of 1.1 seconds should avoid the issue.
+     */
+    private static final Duration THROTTLER_MARGIN_DURATION = Duration.ofMillis(1100);
+
     public TwitterThrottler() {
-        super(buildPublishedTwitterRateLimitsMap(), buildDefaultRateLimiter());
+        this(Sleeper.system());
+    }
+
+    @VisibleForTesting
+    TwitterThrottler(Sleeper marginSleeper) {
+        super(buildPublishedTwitterRateLimitsMap(), buildDefaultRateLimiter(), THROTTLER_MARGIN_DURATION, marginSleeper);
     }
 
     static Map<String, RateLimiter> buildPublishedTwitterRateLimitsMap() {

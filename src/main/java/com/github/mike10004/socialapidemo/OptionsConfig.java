@@ -21,6 +21,7 @@ public class OptionsConfig extends CrawlerConfig {
     public static final String OPT_MAX_ERRORS = "max-errors";
     public static final String OPT_MAX_ASSETS = "max-assets";
     public static final String OPT_QUEUE_CAPACITY = "queue-capacity";
+    public static final String OPT_SEED = "seed";
 
     private Program.Sns sns;
     private OptionSet options;
@@ -104,5 +105,11 @@ public class OptionsConfig extends CrawlerConfig {
     @Override
     public long getAssetCountLimit() {
         return maybeGet(OPT_MAX_ASSETS, super.getAssetCountLimit());
+    }
+
+    @Override
+    public TwitterCrawlerStrategy getTwitterCrawlerStrategy() {
+        @Nullable String seed = (String) options.valueOf(OPT_SEED);
+        return new TwitterCrawlerStrategy(seed);
     }
 }

@@ -56,9 +56,20 @@ public abstract class CrawlerConfig {
         return ErrorReactor.rethrower();
     }
 
+    /**
+     * Gets the capacity of the crawler queue. The queue is where future crawl nodes are
+     * staged. When the queue is filled to capacity, any subsequent crawl nodes will be
+     * dropped, until the queue is once again under capacity.
+     * @return the capacity
+     */
     public int getQueueCapacity() {
-        return 8192;
+        return DEFAULT_QUEUE_CAPACITY;
     }
+
+    /**
+     * @see #getQueueCapacity()
+     */
+    public static final int DEFAULT_QUEUE_CAPACITY = 8192;
 
     protected VisitRecorder buildVisitRecorder() {
         return VisitRecorder.inMemory();
@@ -70,5 +81,9 @@ public abstract class CrawlerConfig {
 
     public long getAssetCountLimit() {
         return Long.MAX_VALUE;
+    }
+
+    public TwitterCrawlerStrategy getTwitterCrawlerStrategy() {
+        return new TwitterCrawlerStrategy();
     }
 }

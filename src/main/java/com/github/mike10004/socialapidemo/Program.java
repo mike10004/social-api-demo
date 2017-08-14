@@ -11,8 +11,6 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import facebook4j.Facebook;
-import joptsimple.HelpFormatter;
-import joptsimple.OptionDescriptor;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
 import twitter4j.Twitter;
@@ -117,12 +115,12 @@ public class Program {
         parser.accepts(OptionsConfig.OPT_MAX_ERRORS, "tolerate MAX errors before aborting").withRequiredArg().ofType(Integer.class).describedAs("MAX");
         parser.accepts(OptionsConfig.OPT_MAX_ASSETS, "terminate after MAX assets processed").withRequiredArg().ofType(Long.class).describedAs("MAX");
         parser.accepts(OptionsConfig.OPT_QUEUE_CAPACITY, "set capacity of crawl node queue").withRequiredArg().ofType(Integer.class).describedAs("CAPACITY");
+        parser.accepts(OptionsConfig.OPT_SEED, "seed crawler with ID").withRequiredArg().ofType(String.class).describedAs("ID");
         OptionSet options = parser.parse(args);
         if (options.has("debug")) {
             logVerbosely(stdout);
         }
         if (options.has("help")) {
-
             stdout.println("Arguments:");
             stdout.println("    [options] PROXY MODE SNS");
             stdout.format("where PROXY is of the format 'host:port' or 'DIRECT', " +

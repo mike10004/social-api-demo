@@ -56,7 +56,8 @@ public abstract class Crawler<C, X extends Exception> {
             CrawlNode<?, X> seed = seeds.next();
             queue.add(seed);
             while (isUnderAssetCountLimit() && !queue.isEmpty()) {
-                CrawlNode<?, X> target = queue.remove();
+                CrawlNode<?, X> target = queue.remove(); // single thread, so !isEmpty() ==> remove() succeeds
+                log.debug("processing cat={} node from queue with {} nodes remaining", target.getCategory(), queue.size());
                 RemainingActionsStatus remaining = (!seeds.hasNext() && queue.isEmpty()) ? RemainingActionsStatus.NONE : RemainingActionsStatus.SOME;
                 Iterable<CrawlNode<?, X>> branches = acquire(target, remaining);
                 branches.forEach(queue::offer);
