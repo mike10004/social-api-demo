@@ -34,11 +34,11 @@ public class TwitterCrawler extends Crawler<Twitter, TwitterException> {
     @Override
     protected Iterator<CrawlNode<?, TwitterException>> getSeedGenerator() {
         List<CrawlNode<?, TwitterException>> crawlNodes;
-        TwitterCrawlerStrategy strategy = crawlerConfig.getTwitterCrawlerStrategy();
-        if (strategy.firstUserId == null) {
+        String seed = crawlerConfig.getSeedSpecification();
+        if (seed == null) {
             crawlNodes = ImmutableList.of(new AuthenticatedUserProfileNode());
         } else {
-            crawlNodes = ImmutableList.of(new OtherUserProfileNode(Long.parseLong(strategy.firstUserId)));
+            crawlNodes = ImmutableList.of(new OtherUserProfileNode(Long.parseLong(seed)));
         }
         return crawlNodes.iterator();
     }

@@ -4,6 +4,8 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 
+import javax.annotation.Nullable;
+
 /**
  * Abstract class for crawler dependency service factory. Concrete implementations
  * of this class instantiate services used by a crawler.
@@ -83,7 +85,8 @@ public abstract class CrawlerConfig {
         return Long.MAX_VALUE;
     }
 
-    public TwitterCrawlerStrategy getTwitterCrawlerStrategy() {
-        return new TwitterCrawlerStrategy();
+    @Nullable
+    public String getSeedSpecification() {
+        return null;
     }
 }

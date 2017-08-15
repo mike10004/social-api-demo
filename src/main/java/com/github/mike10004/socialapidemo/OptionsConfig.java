@@ -10,9 +10,8 @@ import java.io.File;
 import java.net.URI;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
 
-public class OptionsConfig extends CrawlerConfig {
+public abstract class OptionsConfig extends CrawlerConfig {
 
     private static final Logger log = LoggerFactory.getLogger(OptionsConfig.class);
 
@@ -23,41 +22,28 @@ public class OptionsConfig extends CrawlerConfig {
     public static final String OPT_QUEUE_CAPACITY = "queue-capacity";
     public static final String OPT_SEED = "seed";
 
-    private Program.Sns sns;
     private OptionSet options;
 
     @SuppressWarnings("unused")
     public enum ThrottleStrategy {
-        NONE, SNS_API_DEFAULT
+        NONE, SNS_API_DEFAULT, SNS_API_GREEDY
     }
 
-    public OptionsConfig(Program.Sns sns, OptionSet options) {
-        this.sns = sns;
+    protected OptionsConfig(OptionSet options) {
         this.options = options;
     }
 
     @Override
     public Throttler buildThrottler() {
-        ThrottleStrategy throttleStrategy = (ThrottleStrategy) options.valueOf(OPT_THROTTLE);
+        ThrottleStrategy throttleStrategy = (ThrottleStrategy) checkNotNull(options.valueOf(OPT_THROTTLE), "throttle strategy");
         Throttler throttler = buildThrottler(throttleStrategy);
         log.debug("throttle strategy {} yields {}", throttleStrategy, throttler);
         return throttler;
     }
 
-    private Throttler buildThrottler(ThrottleStrategy throttleStrategy) {
-        checkState(throttleStrategy != null, "no throttle strategy defined");
-        switch (throttleStrategy) {
-            case NONE:
-                return Throttler.inactive();
-        }
-        checkState(throttleStrategy == ThrottleStrategy.SNS_API_DEFAULT);
-        switch (sns) {
-            case twitter:
-                return new TwitterThrottler();
-            default:
-                throw new IllegalStateException("no default throttle strategy for " + sns);
-        }
-    }
+    protected abstract AssetSerializer buildAssetSerializer();
+
+    protected abstract Throttler buildThrottler(ThrottleStrategy throttleStrategy);
 
     @Override
     public AssetProcessor buildAssetProcessor() {
@@ -66,14 +52,7 @@ public class OptionsConfig extends CrawlerConfig {
             URI storageSpecUri = URI.create(storageSpecUriStr);
             if ("file".equals(storageSpecUri.getScheme())) {
                 File root = new File(storageSpecUri);
-                AssetSerializer serializer;
-                switch (sns) {
-                    case twitter:
-                        serializer = new TwitterAssetSerializer();
-                        break;
-                    default:
-                        throw new IllegalStateException("no asset serializer defined for " + sns);
-                }
+                AssetSerializer serializer = buildAssetSerializer();
                 return new FileStoringAssetProcessor(root.toPath(), serializer);
             }
             throw new IllegalStateException("not handled: " + storageSpecUriStr);
@@ -107,9 +86,11 @@ public class OptionsConfig extends CrawlerConfig {
         return maybeGet(OPT_MAX_ASSETS, super.getAssetCountLimit());
     }
 
+    @Nullable
     @Override
-    public TwitterCrawlerStrategy getTwitterCrawlerStrategy() {
+    public String getSeedSpecification() {
         @Nullable String seed = (String) options.valueOf(OPT_SEED);
-        return new TwitterCrawlerStrategy(seed);
+        return seed;
     }
+
 }

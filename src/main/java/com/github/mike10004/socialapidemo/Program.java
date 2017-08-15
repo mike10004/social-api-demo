@@ -216,7 +216,14 @@ public class Program {
     }
 
     protected CrawlerConfig createCrawlerConfig(Program.Sns sns, OptionSet options) {
-        return new OptionsConfig(sns, options);
+        switch (sns) {
+            case twitter:
+                return new TwitterCrawlerConfig(options);
+            case facebook:
+                return new FacebookCrawlerConfig(options);
+            default:
+                throw new UnsupportedOperationException("Program.Sns." + sns);
+        }
     }
 
     protected void configureSystemProxy(Proxy.Type proxyType, @Nullable HostAndPort proxyAddress, Properties systemProperties) {
